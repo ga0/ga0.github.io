@@ -1,0 +1,60 @@
+---
+title: SYN scan 的简单实现
+date: 2015-05-06 19:33:40
+categories: socket
+---
+
+#什么是SYN Scan
+如果想要知道一个网段的所有或者部分端口是不是开启的，该怎么做呢？
+你可能会说，写一个程序对每个IP的每个端口发起一次TCP请求。
+这样的问题在于，当需要扫描的IP地址很多，端口很多时，消耗的时间是非常长的。  
+  
+那么有什么替代方法呢？  
+答案是SYN scan，也叫半开(half open)扫描。
+TCP连接建立的时候，需要三次握手：  
+
+    Server |--------------| Client  
+    1       SYN->  
+    2            <-ACK+SYN
+    3       ACK->
+
+如果只是想知道某一个端口是否打开了，只需要第一步和第二步就可以了。
+这意味着，我们并不需要调用connect函数去发起连接，只要向对方发送一个设置了SYN标记的TCP包即可！  
+这样的程序，可以很方便的并发扫描，一个线程不停的发送SYN包，另一个线程不停的接受ACK+SYN即可。
+
+#收发SYN包
+如何能构造、发送一个SYN包呢？答案是用raw socket，原始套接字。  
+通过原始套接字可以构造、接收各种不同类型的包，以太帧、IP、ICMP、TCP等等，甚至错误的数据包。  
+下面是一个接收TCP包的例子：
+
+    int sock_raw = socket(PF_INET , SOCK_RAW , IPPROTO_TCP);
+    data_size = recvfrom(sock_raw , buffer , 65536 , 0 , &saddr , &saddr_size);
+
+通过原始套接字调用recvfrom可以抓取所有的TCP包，达到sniffer的目的。  
+发送可以使用sendto函数。
+
+>注意：  
+>*    原始套接字需要程序具有CAP_NET_RAW的能力，所以通常需要root权限来运行程序。  
+>*    如果使用MacOS或者FreeBSD等其他UNIX操作系统，使用IPPROTO_TCP的socket也是无法抓到包的。
+>     详细请参考[Strange RAW Socket on Mac OS X](http://stackoverflow.com/questions/6878603/strange-raw-socket-on-mac-os-x)。
+
+#使用libpcap
+想要抓取Unix系统的所有TCP的包，需要在数据链路层操作才可以。但是如果在数据链路层抓包，会抓到几乎所有的网络流量。
+这样一来，数据量过大，不利于处理，而且效率低下。为了解决这个问题，我们使用libpcap来收包。  
+
+通过libpcap可以通过使用[BPF(Berkeley Packet Filter)](http://en.wikipedia.org/wiki/Berkeley_Packet_Filter)来抓取想要的包。
+libpcap的使用并不难，网上有大量的参考文档，这里不再赘述。简单说来，libpcap封装了操作系统提供的BPF操作。
+通过BPF，程序可以在操作系统的链路层抓包。
+
+#操作系统的“干扰”
+libpcap或者其他raw socket收到包后，操作系统会继续按照正常流程处理改数据包。
+因此，当在SYN-Scan的时候，如果构造一个SYN包发给服务器，服务器返回SYN-ACK包后，虽然你什么都没做，你的操作系统仍然会帮你发送一个RST包。  
+当服务器收到RST包后，就会终止本次TCP连接；如果没有收到，就会一直等待，直到超时。
+如果很多客户端一起不停的对一台服务器发送SYN包，并且客户端在收到服务器发来的ACK+SYN包后，不作处理，服务器就可能瘫痪掉。这就是所谓的SYN洪泛攻击。  
+
+对于我们的扫描器，因为只会对一个IP发送少量的包，对服务器造成的负担有限，可以考虑不发送RST包。
+可以通过iptable来禁止服务器发RST包:  
+  
+    iptables -A OUTPUT -p tcp --tcp-flags RST RST -j DROP
+    
+#To be continue...
