@@ -100,10 +100,21 @@ data_size = recvfrom(sock_raw , buffer , 65536 , 0 , &amp;saddr , &amp;saddr_siz
 
 <blockquote>
 <p>注意：<br>
-*    原始套接字需要程序具有CAP<em>NET</em>RAW的能力，所以通常需要root权限来运行程序。<br>
+*    原始套接字需要程序具有CAP_NET_RAW的能力，所以通常需要root权限来运行程序。<br>
 *    如果使用MacOS或者FreeBSD等其他UNIX操作系统，使用IPPROTO_TCP的socket也是无法抓到包的。
     详细请参考<a href="http://stackoverflow.com/questions/6878603/strange-raw-socket-on-mac-os-x">Strange RAW Socket on Mac OS X</a>。</p>
 </blockquote>
+
+<h1>端口状态的判断</h1>
+
+<p>如果服务器收到我们的SYN探测包，那么有几种可能:</p>
+
+<ul>
+<li>返回ACK+SYN 表示该端口是开启的；</li>
+<li>返回ACK而没有SYN 基本也可以认为是开启的，参考下面split-handshake一节；</li>
+<li>返回ACK+RST 表示该端口是关闭的，但是该IP的主机是开启的；</li>
+<li>没收到任何回应 可能是被防火墙过滤了，也可能该IP无法访问或者服务器没有开启。</li>
+</ul>
 
 <h1>使用libpcap</h1>
 
@@ -125,7 +136,57 @@ libpcap的使用并不难，网上有大量的参考文档，这里不再赘述�
 可以通过iptable来禁止服务器发RST包:  </p>
 <div class="highlight"><pre><code class="language-text" data-lang="text">iptables -A OUTPUT -p tcp --tcp-flags RST RST -j DROP
 </code></pre></div>
-<h1>To be continue...</h1>
+<h1>如何识别服务器端响应的TCP包</h1>
+
+<p>libpcap该如何识别哪些包是服务器响应的包呢？我们的网卡上随时随地都在不停的收发各种数据包，必须要识别出那些是我们关心的包，然后才能构造BPF表达式。<br>
+不放先考虑一个TCP包中有哪些字段能够用来识别。</p>
+
+<ul>
+<li><p><strong>Ether</strong> 源、目的MAC地址和协议号。这些字段都无法自己随意设置，否则会发不出去。  </p></li>
+<li><p><strong>IP</strong> 源、目的IP地址。收到的包的源地址可以用来做识别，但是对不同IP地址发的探测包的响应中源地址都不一样，因此无法构造一个BPF表达式来抓取这些包。</p></li>
+<li><p><strong>TCP</strong> 源、目的端口：如果要用源端口来识别，就要求我们每个发出的包使用相同端口，这会导致其他问题，下面会讲到；
+序号：如果我们向服务器端发送序号为N的SYN包，服务器需要回复ACK序号为N+1的包，这样我们只要保持每次发送的包的序号一样，就可以通过判断收到的包的ACK号来判断了。</p></li>
+</ul>
+
+<p>根据上面的分析，构造如下的BPF表达式:</p>
+<div class="highlight"><pre><code class="language-text" data-lang="text">tcp[8:4] == TCP_ISN + 1
+</code></pre></div>
+<p>TCP_ISN 就是所有发出的SYN包中的序号。<br>
+tcp[8:4] 就是tcp头的第8个字节开始的四个字节组成的数字。</p>
+
+<h1>SYN探测包的端口设置</h1>
+
+<p>如果使用相同的源端口对一个网段的IP地址短时间内发送大量SYN包，经常会收不到正常的回应，原因可能是服务器设置了防火墙，会对短时间内大量相同源端口的TCP SYN包做过滤。
+为了避免这种情况发生，每次发的SYN包应该使用随机的源端口。</p>
+
+<h1>IP地址的扫描顺序</h1>
+
+<p>如果要扫描一个很大的网段，比如 10.10.0.0/16，如果按照IP地址递增的顺序发包，可能会导致一个比较小的网段的网关在极短时间段内连续收到大量的探测包。<br>
+因此最好向所有需要扫描的IP地址随机的发包，保证每个小的网段均匀的收到探测包。但是如果真的使用rand()函数产生随机IP，又需要记录每一个单独IP地址是不是已经扫描过，这样就要消耗大量的内存。<br>
+解决方法是把被扫描IP地址的主机部分(比如10.10.0.0/16网段的IP地址的后16位)按位倒序排列。<br>
+这样以来，对10.10.0.0/16网段的IP扫描顺序就变成了下面的形式:  </p>
+<div class="highlight"><pre><code class="language-text" data-lang="text">序号    正常顺序         按位倒序排列后
+ 0   10.10.0.0          10.10.0.0
+ 1   10.10.0.1          10.10.128.0
+ 2   10.10.0.2          10.10.64.0
+ 3   10.10.0.3          10.10.192.0
+ 4   10.10.0.4          10.10.32.0
+</code></pre></div>
+<p>这样就保证了把探测包平均的“撒”在被探测的网段上。</p>
+
+<h1>关于split-handshake</h1>
+
+<p>所谓Spliting handshake 就是服务器在收到客户端发来的SYN之后，不发送ACK+SYN，而是分成两个包，一个ACK，一个SYN。<br>
+点击<a href="http://nmap.org/misc/split-handshake.pdf">这里</a>了解更多。<br>
+因此，我们收到一个服务器发来的回应后，只要含有ACK，基本就可以认为该端口是开启的了，而不必一定要同时具有ACK和SYN。</p>
+
+<h1>流量控制</h1>
+
+<p>发的太频繁会导致大量的包无响应，发送速度主要受扫描器的本地网络带宽限制。可以在没发出一个SYN包后，延时一段时间，已达到流控的效果。</p>
+
+<h1>tcpscan</h1>
+
+<p><a href="https://github.com/ga0/tcpscan">tcpscan</a>是我用c语言实现的一个简单的syn-scan扫描器，github地址：https://github.com/ga0/tcpscan</p>
 
   </div>
 </div>
@@ -160,7 +221,7 @@ libpcap的使用并不难，网上有大量的参考文档，这里不再赘述�
     <p class="text-muted credit">
       &copy; 2015 无心之祸 &middot;
       Jekyll Theme: <a href="https://github.com/arnp/herring-cove"> Herring Cove for Jekyll </a> &middot;
-      2015-05-06 22:13:50 +0800
+      2015-05-07 21:17:05 +0800
     </p>
   </footer>
 </div>
