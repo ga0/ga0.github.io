@@ -1,7 +1,7 @@
 ---
 title: SYN scan 的简单实现
 date: 2015-05-06 19:33:40
-categories: socket
+categories: tech
 ---
 
 #什么是SYN Scan
