@@ -18,13 +18,11 @@ h1,h2,h3,h4,h5,h6
 
 h1
 {
-  font-weight:700;
   color:#6d7680
 }
 
 h2,h3
 {
-  font-weight:700
 }
 
 h1 a,h2 a,h3 a,h4 a
@@ -40,14 +38,14 @@ h1 a:hover,h2 a:hover,h3 a:hover,h4 a:hover
 p
 {
   font-family:"Helvetica Neue", helvetica, "Open Sans", sans-serif;
-  font-weight:200
+  line-height: 1.7em;
+  font-size:18px;
 }
 
 .posts
 {
   font-size:20px;
   list-style:none;
-  font-weight:lighter;
   line-height:250%;
   padding-bottom:30px
 }
@@ -118,7 +116,6 @@ p
   line-height:30px;
   text-indent:40px;
   font-family:"Helvetica Neue", helvetica, "Open Sans", sans-serif;
-  font-weight:200;
   color:#9c9c9c;
   text-shadow:1px 1px #fff
 }
@@ -151,7 +148,6 @@ p
 .sidebar-nav > .sidebar-brand > h3
 {
   font-size:15px;
-  font-weight:100;
   color:#5d5f67
 }
 
@@ -164,7 +160,6 @@ p
 
 .brand
 {
-  font-weight:800;
   color:#6c7077;
   font-family:"Helvetica Neue", helvetica, "Open Sans",sans-serif;
   font-size:1.4em;
@@ -217,7 +212,13 @@ blockquote
 
 ul,ol
 {
-  font-weight:lighter
+  /*font-weight:lighter*/
+}
+
+li
+{
+  font-size:18px;
+  line-height: 1.7em;
 }
 
 pre
@@ -268,7 +269,6 @@ pre
 {
   font-size:3em;
   font-family:"Helvetica Neue", helvetica, "Open Sans", sans-serif;
-  font-weight:bolder;
   color:#fff;
   text-align:center;
   padding-top:20%
@@ -291,7 +291,6 @@ pre
 #welcome-greeting > h1
 {
   font-size:3em;
-  font-weight:700;
   color:#d90006;
   line-height:130%
 }
@@ -299,7 +298,6 @@ pre
 #welcome-greeting h1:hover
 {
   font-size:3em;
-  font-weight:700;
   color:#2d4440;
   transition:all .5s ease 0
 }
@@ -307,7 +305,6 @@ pre
 #welcome-greeting > h2
 {
   font-size:2em;
-  font-weight:100;
   color:#2e2e2e;
   padding-top:0;
   line-height:140%
@@ -315,7 +312,6 @@ pre
 
 #welcome-greeting h2 a
 {
-  font-weight:100;
   color:#d90006
 }
 
@@ -337,7 +333,6 @@ pre
 .label-danger
 {
   background-color:#697b7b;
-  font-weight:400;
   border-radius:.2em;
   font-size:120%
 }
@@ -354,7 +349,6 @@ pre
   background-color:transparent;
   border:1px solid rgba(255,255,255,.4);
   color:rgba(255,255,255,.8);
-  font-weight:200;
   font-family:"Helvetica Neue", helvetica, "Open Sans", sans-serif;
 }
 
@@ -369,7 +363,6 @@ pre
 .article-title
 {
   font-size:35px;
-  font-weight:700;
   color:#d90006;
   padding-top:15px
 }
@@ -421,7 +414,6 @@ time
 {
   color:#c9c9c9;
   font-family:"Helvetica Neue", helvetica, "Open Sans", sans-serif;
-  font-weight:100;
   text-shadow:1px 1px #fff
 }
 
@@ -480,7 +472,6 @@ time
 {
   font-size:3em;
   font-family:"Helvetica Neue", helvetica, "Open Sans", sans-serif;
-  font-weight:bolder;
   color:#fff;
   text-align:center;
   padding-top:20px
@@ -488,7 +479,6 @@ time
 
 .project-container p
 {
-  font-weight:200;
   font-family:"Helvetica Neue", helvetica, "Open Sans",sans-serif;
   color:#fff;
   text-align:center;
@@ -534,7 +524,6 @@ time
 
 .project-post h4
 {
-  font-weight:200;
   font-size:1em
 }
 
@@ -549,7 +538,6 @@ time
 .user-card h1
 {
   font-family:"Helvetica Neue", helvetica, "Open Sans",sans-serif;
-  font-weight:bolder;
   font-size:2.5em;
   line-height:55px;
   color:#d90006
@@ -570,7 +558,6 @@ time
 .letter p
 {
   font-size:1.2em;
-  font-weight:lighter;
   color:#737373;
   text-shadow:1px 1px #fff
 }
@@ -728,7 +715,6 @@ time
   #welcome-greeting h2 {
    font-size: 15px; 
    transition: all 0.2s ease 0s;
-   font-weight: 200;
    line-height: 30px;
 
   }

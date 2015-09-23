@@ -33,5 +33,3 @@ categories: tech
 
 这是一个我在阅读golang runtime源码时的笔记片段:
 ![笔记截图](/images/ervernote-snip.png)
-
-希望本文提到的代码对你有帮助！
